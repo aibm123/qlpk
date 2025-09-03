@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phần Mềm Quản Lý Phòng Khám</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .sidebar {
+            background-color: #005246;
+        }
+
+        .sidebar-item {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .sidebar-item:hover,
+        .sidebar-item.active {
+            background-color: #00796b;
+            border-left: 4px solid #80deea;
+            padding-left: 20px;
+        }
+        
+        .login-bg {
+             background-color: #e0f2f1;
+             background-image: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .modal-backdrop {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); 
+            z-index: 40; 
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            position: relative;
+            z-index: 50;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .table-row-clickable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .table-row-clickable:hover {
+            background-color: #f7fafc;
+        }
+
+        .ai-button {
+            background-color: #00796b;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .ai-button:hover:not(:disabled) {
+            background-color: #005246;
+        }
+        .ai-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #00796b;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- Login Page -->
+    <div id="login-page" class="flex items-center justify-center h-screen login-bg">
+        <div class="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md fade-in">
+            <div class="text-center mb-8">
+                <i class="fas fa-house-medical text-5xl text-teal-600"></i>
+                <h1 class="text-3xl font-bold text-gray-800 mt-4">Quản Lý Phòng Khám</h1>
+            </div>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-700 font-medium mb-2">Tên đăng nhập</label>
+                    <input type="text" id="username" value="admin" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 font-medium mb-2">Mật khẩu</label>
+                    <input type="password" id="password" value="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" required>
+                </div>
+                <button type="submit" class="w-full bg-teal-600 text-white py-3 rounded-lg hover:bg-teal-700 transition duration-300 font-semibold text-base">Đăng Nhập</button>
+                <p id="login-error" class="text-red-500 text-sm mt-2 text-center"></p>
+            </form>
+             <div class="text-center mt-4 text-xs text-gray-400">
+                <p>Tài khoản mẫu: admin / password</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="flex h-screen" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 text-white flex-shrink-0 flex flex-col">
+            <div class="p-6 text-center border-b border-gray-700">
+                <h2 class="text-2xl font-bold">Quản Lý Phòng Khám</h2>
+            </div>
+            <nav class="mt-6 flex-1">
+                <a href="#" class="sidebar-item active flex items-center px-6 py-3" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt fa-fw w-6"></i><span class="ml-4">Bảng điều khiển</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center px-6 py-3" data-page="patients">
+                    <i class="fas fa-users fa-fw w-6"></i><span class="ml-4">Quản lý bệnh nhân</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center px-6 py-3" data-page="appointments">
+                    <i class="fas fa-calendar-alt fa-fw w-6"></i><span class="ml-4">Quản lý lịch hẹn</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center px-6 py-3" data-page="inventory">
+                    <i class="fas fa-pills fa-fw w-6"></i><span class="ml-4">Quản lý kho thuốc</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center px-6 py-3" data-page="billing">
+                    <i class="fas fa-file-invoice-dollar fa-fw w-6"></i><span class="ml-4">Doanh thu & Thu chi</span>
+                </a>
+                 <a href="#" class="sidebar-item flex items-center px-6 py-3" data-page="aiAssistant">
+                    <i class="fas fa-robot fa-fw w-6"></i><span class="ml-4">Trợ lý AI</span>
+                </a>
+            </nav>
+            <div class="p-6 border-t border-gray-700">
+                 <div class="flex items-center">
+                    <img src="https://placehold.co/40x40/80deea/005246?text=BS" alt="User" class="rounded-full">
+                    <div class="ml-3">
+                        <p class="font-semibold">BS. Nguyễn Văn An</p>
+                        <p class="text-xs opacity-70">Bác sĩ</p>
+                    </div>
+                </div>
+                <button id="logout-btn" class="w-full mt-4 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition duration-300 flex items-center justify-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 p-8 overflow-y-auto">
+            <!-- All pages will be rendered here by JS -->
+        </main>
+    </div>
+    
+    <!-- Universal Modal -->
+    <div id="universal-modal-backdrop" class="modal-backdrop">
+        <div id="universal-modal" class="modal bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl fade-in">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 id="universal-modal-title" class="text-xl font-bold text-gray-800"></h2>
+                <button id="close-universal-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div id="universal-modal-content">
+                <!-- Modal Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- GLOBAL STATE ---
+            let uploadedImage = { base64: null, mimeType: null };
+            let isAiThinking = false;
+
+            // --- MOCK DATA ---
+            const mockData = {
+                patients: [
+                    { id: 1, name: 'Trần Thị B', dob: '1985', gender: 'Nữ', phone: '0901234567', address: '123 Nguyễn Trãi, Q1, TP.HCM', history: [{date: '2025-08-10', diagnosis: 'Viêm họng cấp', notes: 'Ho, sốt nhẹ.'}, {date: '2025-05-15', diagnosis: 'Cảm cúm', notes: 'Sổ mũi, đau đầu.'}] },
+                    { id: 2, name: 'Nguyễn Văn A', dob: '1990', gender: 'Nam', phone: '0987654321', address: '456 Lê Lợi, Q3, TP.HCM', history: [{date: '2025-08-20', diagnosis: 'Tái khám tiểu đường', notes: 'Đường huyết ổn định.'}] },
+                    { id: 3, name: 'Lê Hoàng C', dob: '1972', gender: 'Nam', phone: '0912345678', address: '789 Trần Hưng Đạo, Q5, TP.HCM', history: [{date: '2025-08-25', diagnosis: 'Tái khám huyết áp', notes: 'Huyết áp 130/80 mmHg.'}] },
+                    { id: 4, name: 'Phạm Thu D', dob: '2001', gender: 'Nữ', phone: '0934567890', address: '321 Hai Bà Trưng, Q1, TP.HCM', history: [{date: '2025-09-01', diagnosis: 'Khám tổng quát', notes: 'Sức khỏe tốt.'}] },
+                ],
+                appointments: [
+                    { id: 1, time: '09:00', patientId: 3, patientName: 'Lê Hoàng C', reason: 'Tái khám huyết áp' },
+                    { id: 2, time: '09:30', patientId: 4, patientName: 'Phạm Thu D', reason: 'Khám tổng quát' },
+                    { id: 3, time: '10:00', patientId: 1, patientName: 'Trần Thị B', reason: 'Đau họng' },
+                ],
+                inventory: [
+                    { id: 1, name: 'Paracetamol 500mg', stock: 150, unit: 'Viên', price: 1000, supplier: 'Dược Hậu Giang', usage: 'Giảm đau, hạ sốt' },
+                    { id: 2, name: 'Amoxicillin 250mg', stock: 25, unit: 'Viên', price: 2500, supplier: 'Traphaco', usage: 'Kháng sinh điều trị nhiễm khuẩn' },
+                    { id: 3, name: 'Vitamin C 500mg', stock: 300, unit: 'Viên', price: 1500, supplier: 'Dược Hậu Giang', usage: 'Tăng cường sức đề kháng' },
+                ],
+                billing: [
+                    { id: 1, date: '2025-09-04', type: 'Thu', description: 'Phí khám - BN Lê Hoàng C', amount: 150000 },
+                    { id: 2, date: '2025-09-04', type: 'Thu', description: 'Tiền thuốc - BN Trần Thị B', amount: 85000 },
+                    { id: 3, date: '2025-09-03', type: 'Chi', description: 'Tiền điện tháng 8', amount: -1200000 },
+                    { id: 4, date: '2025-09-02', type: 'Thu', description: 'Phí khám - BN Phạm Thu D', amount: 150000 },
+                    { id: 5, date: '2025-09-01', type: 'Chi', description: 'Nhập thuốc', amount: -5500000 },
+                ]
+            };
+            
+            // --- GEMINI API INTEGRATION ---
+            const API_KEY = "AIzaSyDQKXsd4PUwGD5JU6yvfL-xGYX0IwTTbgI"; // Provided by environment
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+
+            async function callGeminiAPI(payload, targetElement) {
+                targetElement.innerHTML = `<div class="flex justify-center items-center"><div class="loader"></div></div>`;
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n\s*\* (.*?)/g, '<li>$1</li>').replace(/\n/g, '<br>');
+                        targetElement.innerHTML = `<div class="text-gray-700 space-y-2 text-sm">${html.includes('<li>') ? `<ul class="list-disc list-inside">${html}</ul>` : html}</div>`;
+                    } else { throw new Error("No content received from API."); }
+                } catch (error) {
+                    console.error("Gemini API call failed:", error);
+                    targetElement.innerHTML = `<p class="text-red-500 text-sm">Lỗi khi gọi AI. Vui lòng thử lại.</p>`;
+                }
+            }
+
+            // --- UI ELEMENTS ---
+            const loginPage = document.getElementById('login-page');
+            const mainApp = document.getElementById('main-app');
+            const mainContent = document.getElementById('main-content');
+            const loginForm = document.getElementById('login-form');
+            const logoutBtn = document.getElementById('logout-btn');
+            const sidebarItems = document.querySelectorAll('.sidebar-item');
+            const modalBackdrop = document.getElementById('universal-modal-backdrop');
+            const closeModalBtn = document.getElementById('close-universal-modal');
+
+            // --- UNIVERSAL MODAL ---
+            function openModal(title, contentHtml) {
+                document.getElementById('universal-modal-title').textContent = title;
+                document.getElementById('universal-modal-content').innerHTML = contentHtml;
+                modalBackdrop.style.display = 'flex';
+            }
+            function closeModal() {
+                modalBackdrop.style.display = 'none';
+            }
+            closeModalBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeModal();
+            });
+            modalBackdrop.addEventListener('click', (e) => {
+                if (e.target === modalBackdrop) {
+                    closeModal();
+                }
+            });
+            
+            // --- FORM TEMPLATES ---
+            const formTemplates = {
+                patient: `
+                    <form id="add-form" class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-700">Họ và tên</label><input type="text" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium">Năm sinh</label><input type="number" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                            <div><label class="block text-sm font-medium">Giới tính</label><select class="mt-1 block w-full px-3 py-2 border rounded-md"><option>Nam</option><option>Nữ</option></select></div>
+                        </div>
+                        <div><label class="block text-sm font-medium">Số điện thoại</label><input type="tel" class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium">Địa chỉ</label><textarea class="mt-1 block w-full px-3 py-2 border rounded-md"></textarea></div>
+                        <div class="flex justify-end pt-4"><button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Lưu</button></div>
+                    </form>`,
+                appointment: `
+                     <form id="add-form" class="space-y-4">
+                        <div><label class="block text-sm font-medium">Bệnh nhân</label><select required class="mt-1 block w-full px-3 py-2 border rounded-md">${mockData.patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+                        <div><label class="block text-sm font-medium">Thời gian</label><input type="time" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium">Lý do khám</label><input type="text" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div class="flex justify-end pt-4"><button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Lưu</button></div>
+                    </form>`,
+                inventory: `
+                    <form id="add-form" class="space-y-4">
+                        <div><label class="block text-sm font-medium">Tên thuốc</label><input type="text" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div class="grid grid-cols-2 gap-4">
+                           <div><label class="block text-sm font-medium">Số lượng</label><input type="number" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                           <div><label class="block text-sm font-medium">Đơn vị</label><input type="text" value="Viên" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        </div>
+                        <div><label class="block text-sm font-medium">Nhà cung cấp</label><input type="text" class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium">Công dụng</label><textarea class="mt-1 block w-full px-3 py-2 border rounded-md"></textarea></div>
+                        <div class="flex justify-end pt-4"><button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Lưu</button></div>
+                    </form>`,
+                transaction: `
+                    <form id="add-form" class="space-y-4">
+                        <div><label class="block text-sm font-medium">Loại giao dịch</label><select required class="mt-1 block w-full px-3 py-2 border rounded-md"><option value="Thu">Khoản thu</option><option value="Chi">Khoản chi</option></select></div>
+                        <div><label class="block text-sm font-medium">Số tiền (VND)</label><input type="number" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium">Mô tả</label><input type="text" required class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium">Ngày</label><input type="date" required value="${new Date().toISOString().split('T')[0]}" class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                        <div class="flex justify-end pt-4"><button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Lưu</button></div>
+                    </form>`,
+            };
+
+            // --- PAGE TEMPLATES & RENDERING ---
+            const pages = {
+                dashboard: () => `
+                    <div class="fade-in">
+                        <h1 class="text-3xl font-bold text-gray-800 mb-6">Bảng điều khiển</h1>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between"><div><p class="text-gray-500">Bệnh nhân hôm nay</p><p class="text-2xl font-bold">${mockData.appointments.length}</p></div><i class="fas fa-users text-3xl text-blue-500 opacity-50"></i></div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between"><div><p class="text-gray-500">Tổng doanh thu</p><p class="text-2xl font-bold">${mockData.billing.filter(t => t.type === 'Thu').reduce((sum, t) => sum + t.amount, 0).toLocaleString('vi-VN')}đ</p></div><i class="fas fa-dollar-sign text-3xl text-green-500 opacity-50"></i></div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between"><div><p class="text-gray-500">Thuốc sắp hết</p><p class="text-2xl font-bold">${mockData.inventory.filter(i => i.stock < 50).length}</p></div><i class="fas fa-pills text-3xl text-red-500 opacity-50"></i></div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between"><div><p class="text-gray-500">Lịch hẹn sắp tới</p><p class="text-2xl font-bold">${mockData.appointments.length}</p></div><i class="fas fa-calendar-check text-3xl text-yellow-500 opacity-50"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân Tích Nhanh từ AI</h2>
+                            <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                            <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="dashboard">Lấy phân tích từ AI</button>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow-md">
+                                <h2 class="text-xl font-semibold text-gray-700 mb-4">Lịch hẹn hôm nay (${new Date().toLocaleDateString('vi-VN')})</h2>
+                                <table class="w-full text-left"><tbody>${mockData.appointments.map(a => `<tr class="border-b"><td class="py-2">${a.time}</td><td class="py-2 font-medium">${a.patientName}</td><td class="py-2 text-gray-600">${a.reason}</td></tr>`).join('')}</tbody></table>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md">
+                                <h2 class="text-xl font-semibold text-gray-700 mb-4">Bệnh nhân mới gần đây</h2>
+                                <ul class="space-y-4">${mockData.patients.slice(0,3).map(p => `<li class="flex items-center"><div class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center font-bold mr-4">${p.name.charAt(0)}</div><div><p class="font-semibold text-gray-800">${p.name}</p><p class="text-sm text-gray-500">${p.phone}</p></div></li>`).join('')}</ul>
+                            </div>
+                        </div>
+                    </div>`,
+                patients: () => `
+                    <div class="fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">Quản lý bệnh nhân</h1>
+                            <button id="add-patient-btn" class="bg-teal-600 text-white px-5 py-2 rounded-lg hover:bg-teal-700 flex items-center font-semibold"><i class="fas fa-plus mr-2"></i> Thêm bệnh nhân</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân Tích Tổng Quan Bệnh Nhân</h2>
+                            <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                            <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="patients">Lấy phân tích từ AI</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                             <input type="text" placeholder="Tìm kiếm bệnh nhân (tên, SĐT)..." class="w-full px-4 py-2 border rounded-lg mb-4">
+                             <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-gray-50"><tr>${['Họ tên', 'Năm sinh', 'Giới tính', 'Số điện thoại'].map(h => `<th class="p-3 text-sm font-semibold text-gray-600">${h}</th>`).join('')}</tr></thead>
+                                    <tbody class="divide-y">${mockData.patients.map(p => `<tr class="table-row-clickable" data-id="${p.id}" data-type="patient"><td class="p-3 font-medium">${p.name}</td><td class="p-3">${p.dob}</td><td class="p-3">${p.gender}</td><td class="p-3">${p.phone}</td></tr>`).join('')}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`,
+                patientDetail: (id) => {
+                    const p = mockData.patients.find(item => item.id == id);
+                    return `
+                        <div class="fade-in">
+                             <button class="back-to-list-btn mb-4 text-teal-600 font-semibold" data-page="patients"><i class="fas fa-arrow-left mr-2"></i> Quay lại danh sách</button>
+                             <div class="bg-white p-8 rounded-lg shadow-md">
+                                <div class="flex justify-between items-start">
+                                    <div><h1 class="text-3xl font-bold text-gray-800">${p.name}</h1><p class="text-gray-500">${p.gender} - Sinh năm ${p.dob}</p></div>
+                                    <div class="text-right"><p><i class="fas fa-phone mr-2 text-gray-400"></i>${p.phone}</p><p><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>${p.address}</p></div>
+                                </div><hr class="my-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h2 class="text-xl font-semibold text-gray-700 mb-4">Lịch sử khám bệnh</h2>
+                                        <div class="space-y-4">${p.history.map(h => `<div class="border-l-4 border-teal-500 pl-4"><p class="font-semibold">${new Date(h.date).toLocaleDateString('vi-VN')}: ${h.diagnosis}</p><p class="text-sm text-gray-600">${h.notes}</p></div>`).join('')}</div>
+                                    </div>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân tích từ AI</h2>
+                                        <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                                        <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="patient" data-id="${p.id}">Lấy phân tích từ AI</button>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>`;
+                },
+                appointments: () => `
+                    <div class="fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">Quản lý lịch hẹn</h1>
+                            <button id="add-appointment-btn" class="bg-teal-600 text-white px-5 py-2 rounded-lg hover:bg-teal-700 flex items-center font-semibold"><i class="fas fa-plus mr-2"></i> Thêm lịch hẹn</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân Tích Lịch Hẹn</h2>
+                            <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                            <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="appointments">Lấy phân tích từ AI</button>
+                        </div>
+                         <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-4">Lịch hẹn hôm nay: ${new Date().toLocaleDateString('vi-VN')}</h2>
+                            <div class="overflow-x-auto">
+                               <table class="w-full text-left">
+                                    <thead class="bg-gray-50"><tr>${['Giờ', 'Bệnh nhân', 'Lý do khám', 'Hành động'].map(h => `<th class="p-3 text-sm font-semibold text-gray-600">${h}</th>`).join('')}</tr></thead>
+                                    <tbody class="divide-y">${mockData.appointments.map(a => `<tr><td class="p-3 font-medium">${a.time}</td><td class="p-3">${a.patientName}</td><td class="p-3">${a.reason}</td><td class="p-3"><button class="text-blue-500 hover:text-blue-700 font-semibold appointment-detail-btn" data-patient-id="${a.patientId}">Chi tiết BN</button></td></tr>`).join('')}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`,
+                inventory: () => `
+                    <div class="fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">Quản lý kho thuốc</h1>
+                            <button id="add-inventory-btn" class="bg-teal-600 text-white px-5 py-2 rounded-lg hover:bg-teal-700 flex items-center font-semibold"><i class="fas fa-plus mr-2"></i> Thêm thuốc mới</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân Tích Kho từ AI</h2>
+                            <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                            <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="inventory">Lấy phân tích từ AI</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <div class="overflow-x-auto">
+                               <table class="w-full text-left">
+                                    <thead class="bg-gray-50"><tr>${['Tên thuốc', 'Tồn kho', 'Đơn vị', 'Trạng thái'].map(h => `<th class="p-3 text-sm font-semibold text-gray-600">${h}</th>`).join('')}</tr></thead>
+                                    <tbody class="divide-y">${mockData.inventory.map(i => `<tr class="table-row-clickable" data-id="${i.id}" data-type="inventory"><td class="p-3 font-medium">${i.name}</td><td class="p-3 ${i.stock < 50 ? 'text-red-500 font-bold' : ''}">${i.stock}</td><td class="p-3">${i.unit}</td><td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${i.stock < 50 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${i.stock < 50 ? 'Sắp hết' : 'Còn hàng'}</span></td></tr>`).join('')}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`,
+                inventoryDetail: (id) => {
+                    const item = mockData.inventory.find(i => i.id == id);
+                    return `
+                        <div class="fade-in">
+                             <button class="back-to-list-btn mb-4 text-teal-600 font-semibold" data-page="inventory"><i class="fas fa-arrow-left mr-2"></i> Quay lại danh sách</button>
+                             <div class="bg-white p-8 rounded-lg shadow-md">
+                                <div class="flex justify-between items-start">
+                                    <div><h1 class="text-3xl font-bold text-gray-800">${item.name}</h1><p class="text-gray-500">Nhà cung cấp: ${item.supplier}</p></div>
+                                    <div class="text-right"><p class="text-2xl font-bold ${item.stock < 50 ? 'text-red-500' : 'text-green-600'}">${item.stock} <span class="text-base font-normal text-gray-500">${item.unit}</span></p><p class="text-gray-500">Giá: ${item.price.toLocaleString('vi-VN')}đ / ${item.unit}</p></div>
+                                </div><hr class="my-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div><h2 class="text-xl font-semibold text-gray-700 mb-4">Thông tin chi tiết</h2><p><strong class="font-semibold text-gray-800">Công dụng:</strong> ${item.usage}</p></div>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân tích từ AI</h2>
+                                        <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                                        <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="inventoryItem" data-id="${item.id}">Lấy phân tích từ AI</button>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>`;
+                },
+                 billing: () => `
+                     <div class="fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">Doanh thu & Thu chi</h1>
+                            <button id="add-transaction-btn" class="bg-teal-600 text-white px-5 py-2 rounded-lg hover:bg-teal-700 flex items-center font-semibold"><i class="fas fa-plus mr-2"></i> Thêm giao dịch</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2 flex items-center"><i class="fas fa-brain text-teal-500 mr-3"></i>Phân Tích Tài Chính từ AI</h2>
+                            <div id="ai-analysis-content" class="min-h-[50px]"></div>
+                            <button class="ai-button px-4 py-2 rounded-lg mt-3 text-sm font-semibold ai-analysis-btn" data-type="billing">Lấy phân tích từ AI</button>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                            <div class="lg:col-span-3 bg-white p-6 rounded-lg shadow-md"><h2 class="text-xl font-semibold text-gray-700 mb-4">Tổng quan tài chính</h2><canvas id="revenueChart"></canvas></div>
+                            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md"><h2 class="text-xl font-semibold text-gray-700 mb-4">Giao dịch gần đây</h2><table class="w-full text-left"><tbody class="divide-y">${mockData.billing.slice(0, 5).map(b => `<tr><td class="py-2 text-sm text-gray-500">${new Date(b.date).toLocaleDateString('vi-VN')}</td><td class="py-2">${b.description}</td><td class="py-2 font-semibold text-right ${b.type === 'Thu' ? 'text-green-600' : 'text-red-600'}">${b.amount.toLocaleString('vi-VN')}đ</td></tr>`).join('')}</tbody></table></div>
+                        </div>
+                     </div>`,
+                aiAssistant: () => `
+                    <div class="fade-in">
+                        <h1 class="text-3xl font-bold text-gray-800 mb-6">Trợ lý AI</h1>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                           <div class="h-[65vh] flex flex-col">
+                               <div id="ai-chat-box" class="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg mb-4 border">
+                                  <div class="flex justify-start mb-3"><div class="bg-gray-200 p-3 rounded-lg max-w-md"><p class="text-sm">Xin chào! Tôi là Trợ lý AI. Hãy đặt câu hỏi hoặc tải ảnh lên để tôi phân tích.</p></div></div>
+                               </div>
+                               <div id="image-preview-container" class="hidden relative w-32 h-32 mb-2">
+                                   <img id="image-preview" class="w-full h-full object-cover rounded-md">
+                                   <button id="remove-image-btn" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">&times;</button>
+                               </div>
+                               <div class="flex items-center">
+                                  <input type="file" id="image-upload-input" class="hidden" accept="image/*">
+                                  <button id="image-upload-btn" class="p-3 border rounded-l-lg hover:bg-gray-100 text-gray-600"><i class="fas fa-paperclip"></i></button>
+                                  <input type="text" id="ai-input" class="w-full px-4 py-3 border-t border-b" placeholder="Hỏi đáp với Trợ lý AI...">
+                                  <button id="ai-send-btn" class="bg-teal-600 text-white px-6 py-3 rounded-r-lg hover:bg-teal-700 font-semibold"><i class="fas fa-paper-plane"></i></button>
+                               </div>
+                           </div>
+                        </div>
+                    </div>`,
+            };
+            
+            function renderPage(pageName, id = null) {
+                if (typeof pages[pageName] === 'function') {
+                    mainContent.innerHTML = pages[pageName](id);
+                } else {
+                    mainContent.innerHTML = `<p class="text-red-500">Lỗi: Trang '${pageName}' không tồn tại.</p>`; return;
+                }
+                
+                if (pageName === 'billing') {
+                    const ctx = document.getElementById('revenueChart').getContext('2d');
+                    new Chart(ctx, { type: 'pie', data: {
+                        labels: ['Thu', 'Chi'],
+                        datasets: [{ data: [
+                            mockData.billing.filter(t=>t.type==='Thu').reduce((s,t)=>s+t.amount,0),
+                            mockData.billing.filter(t=>t.type==='Chi').reduce((s,t)=>s+t.amount,0) * -1
+                        ], backgroundColor: ['rgba(75, 192, 192, 0.8)', 'rgba(255, 99, 132, 0.8)'] }]
+                    }});
+                }
+            }
+
+            function navigateTo(pageName, id = null) {
+                renderPage(pageName, id);
+                sidebarItems.forEach(item => item.classList.toggle('active', item.dataset.page === pageName));
+            }
+            
+            sidebarItems.forEach(item => item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); }));
+
+            mainContent.addEventListener('click', (e) => {
+                const target = e.target;
+                
+                // AI Chat buttons
+                if (target.closest('#ai-send-btn')) handleAiChat();
+                if (target.closest('#image-upload-btn')) document.getElementById('image-upload-input').click();
+                if (target.closest('#remove-image-btn')) removeUploadedImage();
+
+                // Table row clicks & Details Buttons
+                const row = target.closest('.table-row-clickable');
+                if (row) {
+                    if (row.dataset.type === 'patient') navigateTo('patientDetail', row.dataset.id);
+                    if (row.dataset.type === 'inventory') navigateTo('inventoryDetail', row.dataset.id);
+                }
+                const backBtn = target.closest('.back-to-list-btn');
+                if (backBtn) navigateTo(backBtn.dataset.page);
+                const appDetailBtn = target.closest('.appointment-detail-btn');
+                if(appDetailBtn) navigateTo('patientDetail', appDetailBtn.dataset.patientId);
+
+                // Modal "Add" buttons
+                if(target.id === 'add-patient-btn') openModal('Thêm Bệnh Nhân Mới', formTemplates.patient);
+                if(target.id === 'add-appointment-btn') openModal('Thêm Lịch Hẹn Mới', formTemplates.appointment);
+                if(target.id === 'add-inventory-btn') openModal('Thêm Thuốc Mới', formTemplates.inventory);
+                if(target.id === 'add-transaction-btn') openModal('Thêm Giao Dịch Mới', formTemplates.transaction);
+                
+                // AI Analysis buttons
+                const aiBtn = target.closest('.ai-analysis-btn');
+                if (aiBtn) {
+                    const type = aiBtn.dataset.type;
+                    const id = aiBtn.dataset.id;
+                    const analysisElement = aiBtn.previousElementSibling;
+                    let prompt = "";
+                    
+                    switch(type) {
+                        case 'dashboard': prompt = `Tôi là bác sĩ quản lý phòng khám. Dựa vào dữ liệu tổng quan sau: ${JSON.stringify({appointments: mockData.appointments, inventory: mockData.inventory})}, hãy đưa ra một vài nhận định và gợi ý ngắn gọn về hoạt động trong ngày hôm nay.`; break;
+                        case 'patients': prompt = `Phân tích tổng quan danh sách bệnh nhân sau: ${JSON.stringify(mockData.patients)}. Cho biết các xu hướng chung về nhân khẩu học hoặc các vấn đề sức khỏe phổ biến.`; break;
+                        case 'patient': prompt = `Phân tích hồ sơ bệnh nhân sau: ${JSON.stringify(mockData.patients.find(p => p.id == id))}. Đưa ra các điểm cần lưu ý và gợi ý chăm sóc.`; break;
+                        case 'appointments': prompt = `Phân tích lịch hẹn hôm nay: ${JSON.stringify(mockData.appointments)}. Có khung giờ nào cao điểm không? Lý do khám phổ biến là gì? Có gợi ý gì để tối ưu không?`; break;
+                        case 'inventory': prompt = `Phân tích tình hình kho thuốc sau: ${JSON.stringify(mockData.inventory)}. Đưa ra cảnh báo về thuốc sắp hết và gợi ý nhập hàng.`; break;
+                        case 'inventoryItem': prompt = `Phân tích về loại thuốc sau: ${JSON.stringify(mockData.inventory.find(i => i.id == id))}. Đưa ra cảnh báo nếu cần và gợi ý sử dụng.`; break;
+                        case 'billing': prompt = `Phân tích dữ liệu tài chính của phòng khám: ${JSON.stringify(mockData.billing)}. Đưa ra nhận xét về dòng tiền và gợi ý để tối ưu.`; break;
+                    }
+                    callGeminiAPI({ contents: [{ parts: [{ text: prompt }] }] }, analysisElement);
+                }
+            });
+            
+            mainContent.addEventListener('change', (e) => {
+                if (e.target.id === 'image-upload-input') handleImageUpload(e);
+            });
+             mainContent.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.id === 'ai-input') handleAiChat();
+            });
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                loginPage.style.display = 'none';
+                mainApp.style.display = 'flex';
+                navigateTo('dashboard');
+            });
+            logoutBtn.addEventListener('click', () => {
+                mainApp.style.display = 'none';
+                loginPage.style.display = 'flex';
+            });
+            
+            function handleImageUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result.replace('data:', '').replace(/^.+,/, '');
+                    uploadedImage = { base64: base64String, mimeType: file.type };
+                    document.getElementById('image-preview').src = reader.result;
+                    document.getElementById('image-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function removeUploadedImage() {
+                uploadedImage = { base64: null, mimeType: null };
+                document.getElementById('image-preview').src = '';
+                document.getElementById('image-preview-container').classList.add('hidden');
+                document.getElementById('image-upload-input').value = null;
+            }
+
+            async function handleAiChat() {
+                const input = document.getElementById('ai-input');
+                const chatBox = document.getElementById('ai-chat-box');
+                const sendBtn = document.getElementById('ai-send-btn');
+                const userMessage = input.value.trim();
+
+                if ((userMessage === '' && !uploadedImage.base64) || isAiThinking) return;
+                
+                isAiThinking = true;
+                sendBtn.disabled = true;
+
+                chatBox.innerHTML += `<div class="flex justify-end mb-3"><div class="bg-teal-500 text-white p-3 rounded-lg max-w-md"><p class="text-sm">${userMessage}</p>${uploadedImage.base64 ? `<img src="data:${uploadedImage.mimeType};base64,${uploadedImage.base64}" class="rounded-md mt-2 max-w-xs">` : ''}</div></div>`;
+                input.value = '';
+                
+                chatBox.scrollTop = chatBox.scrollHeight;
+                chatBox.innerHTML += `<div id="ai-thinking" class="flex justify-start mb-3"><div class="bg-gray-200 p-3 rounded-lg"><div class="loader !w-5 !h-5"></div></div></div>`;
+                
+                const parts = [];
+                let promptForAI;
+
+                if (uploadedImage.base64) {
+                    promptForAI = `Bạn là một trợ lý AI y tế có khả năng phân tích hình ảnh. Hãy phân tích hình ảnh và trả lời câu hỏi của bác sĩ. Nếu không có câu hỏi cụ thể, hãy mô tả những gì bạn thấy trên hình ảnh theo góc độ y khoa. Câu hỏi: "${userMessage || 'Hãy mô tả hình ảnh này.'}"`;
+                    parts.push({text: promptForAI});
+                    parts.push({ inlineData: { mimeType: uploadedImage.mimeType, data: uploadedImage.base64 } });
+                } else {
+                    promptForAI = `Bạn là một trợ lý AI cho phòng khám. Dựa vào dữ liệu phòng khám sau đây: ${JSON.stringify(mockData)}. Trả lời câu hỏi của bác sĩ: "${userMessage}"`;
+                    parts.push({text: promptForAI});
+                }
+                removeUploadedImage();
+
+                try {
+                    const payload = { contents: [{ parts: parts }] };
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    document.getElementById('ai-thinking')?.remove();
+                    chatBox.innerHTML += `<div class="flex justify-start mb-3"><div class="bg-gray-200 p-3 rounded-lg max-w-md"><p class="text-sm">${text.replace(/\n/g, '<br>')}</p></div></div>`;
+                } catch (error) {
+                    document.getElementById('ai-thinking')?.remove();
+                    chatBox.innerHTML += `<div class="flex justify-start mb-3"><div class="bg-gray-200 p-3 rounded-lg max-w-md"><p class="text-sm text-red-500">Đã có lỗi xảy ra. Vui lòng thử lại.</p></div></div>`;
+                } finally {
+                    isAiThinking = false;
+                    sendBtn.disabled = false;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+
+            // INITIAL LOAD
+            navigateTo('dashboard');
+            mainApp.style.display = 'none';
+            loginPage.style.display = 'flex';
+        });
+    </script>
+</body>
+
+</html>
+
+
